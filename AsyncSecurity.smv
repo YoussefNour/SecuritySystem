@@ -18,9 +18,13 @@ VAR
     
     
 ASSIGN
+    --state
     init(state):= systemOff;
-    init(power):= FALSE;
+    --inputs
     init(Button):= FALSE;
+    init(Sensor):= FALSE;
+    --outputs
+    init(power):= FALSE;
     init(alarm):= FALSE;
     init(police):= FALSE;
     init(servicetechnican):= FALSE;
@@ -30,44 +34,61 @@ ASSIGN
     next(state) := case
                         state=systemOff&Button :    safe; --system turned on
                         state=safe&!Button :        systemOff;--system turnedoff 
-                        state=
+                        state=safe&Sensor :         hazard;--hazard noticed
+                        state=hazard&!Button :      systemOff;--manual shutdown from hazard state
+
                         --state=safe & SensorMalfunction: sensorFailure;
                         TRUE: state;
                         esac;
+    --sensors
+    next(Sensor):= case
+                        state=systemOff :   FALSE;
+                        next(state)=systemOff :   FALSE;
+                        next(state)=safe :  {TRUE,FALSE};                
+                        TRUE: Sensor;
+                        esac;
+
+    --inputs
     next(power) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       TRUE;
+                        next(state) = hazard:     TRUE;
                         TRUE: power;
                         esac;
 
     next(alarm) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
-                        TRUE: power;
+                        next(state) = hazard:     TRUE;
+                        TRUE: alarm;
                         esac;
 
     next(police) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
-                        TRUE: power;
+                        next(state) = hazard:     TRUE;
+                        TRUE: police;
                         esac;
 
     next(servicetechnican) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
-                        TRUE: power;
+                        next(state) = hazard:     FALSE;
+                        TRUE: servicetechnican;
                         esac;
     
     next(batterybackup) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
-                        TRUE: power;
+                        next(state) = hazard:     FALSE;
+                        TRUE: batterybackup;
                         esac;
 
     next(lights) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
-                        TRUE: power;
+                        next(state) = hazard:     TRUE;
+                        TRUE: lights;
                         esac;
 
     
