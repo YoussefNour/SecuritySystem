@@ -16,6 +16,10 @@ VAR
     Sensor:boolean;
     SensorMalfunction: boolean;
     deviceMalfunction: boolean;
+    voltageDrop: boolean;
+
+    --conditional counter
+    counter: 0..10;
     
     
 ASSIGN
@@ -26,6 +30,7 @@ ASSIGN
     init(Sensor):= FALSE;
     init(SensorMalfunction):= FALSE;
     init(deviceMalfunction):= FALSE;
+    init(voltageDrop):= FALSE;
     --outputs
     init(power):= FALSE;
     init(alarm):= FALSE;
@@ -34,51 +39,83 @@ ASSIGN
     init(batterybackup):= FALSE;
     init(lights):= FALSE;
 
+    --conditional counter
+    init(counter):=0;
+
     next(state) := case
-                        state=systemOff&Button :    safe; --system turned on
+                        state=systemOff&Button&!Sensor&!SensorMalfunction&!deviceMalfunction&!voltageDrop :    safe; --system turned on
                         state=safe&!Button :        systemOff;--system turnedoff 
                         
-                        state=safe&Sensor&!SensorMalfunction&Button&!deviceMalfunction :   hazard;--hazard noticed
+                        state=safe&Sensor&!SensorMalfunction&Button&!deviceMalfunction&!voltageDrop :   hazard;--hazard noticed
                         state=hazard&!Button :      systemOff;--manual shutdown from hazard state
                         
-                        state=safe&SensorMalfunction&!Sensor&Button&!deviceMalfunction:   sensorFailure;--sensor failed 
+                        state=safe&SensorMalfunction&!Sensor&Button&!deviceMalfunction&!voltageDrop:   sensorFailure;--sensor failed 
                         state=sensorFailure&!Button :   systemOff;--manual shutdown from sensor failure state
                         
-                        state=safe&deviceMalfunction&!Sensor&!SensorMalfunction&Button: powerFailure; --device failed causing powerfailure
+                        state=safe&deviceMalfunction&!Sensor&!SensorMalfunction&Button&!voltageDrop: powerFailure; --device failed causing powerfailure
+                        state=powerFailure&!Button: systemOff;--manual shutdown from power failure state
+
+                        state=safe&!deviceMalfunction&!Sensor&!SensorMalfunction&Button&voltageDrop: hazardVoltageDrop; --hazard voltage drop noticed
+                        state=hazardVoltageDrop&!Button: systemOff;--manual shutdown from hazard voltage drop state
+
                         TRUE: state;
                         esac;
     --inputs
     next(Sensor):= case
                         state=systemOff :   FALSE;
                         next(state)=systemOff :   FALSE;
-                        next(state)=safe :  {TRUE,FALSE};                
+                        next(state)=safe & counter=0 :  TRUE;       
+                        next(state)=safe & !(counter=0) :  FALSE;           
                         next(state)=hazard: TRUE;
                         next(state)=sensorFailure: FALSE;
+                        next(state)=powerFailure: FALSE; 
+                        next(state)=hazardVoltageDrop: FALSE;  
                         TRUE: Sensor;
                         esac;
 
     next(deviceMalfunction):= case
                         state=systemOff :   FALSE;
                         next(state)=systemOff :   FALSE;
-                        next(state)=safe :  !next(Sensor);
+                        next(state)=safe & counter=1 :  TRUE;       
+                        next(state)=safe & !(counter=1) :  FALSE;    
                         next(state)=hazard: FALSE;
-                        next(state)=sensorFailure: TRUE;                
-                        TRUE: SensorMalfunction;
+                        next(state)=sensorFailure: FALSE;
+                        next(state)=powerFailure: TRUE;   
+                        next(state)=hazardVoltageDrop: FALSE;                
+                        TRUE: deviceMalfunction;
                         esac;
 
     next(SensorMalfunction):= case
                         state=systemOff :   FALSE;
                         next(state)=systemOff :   FALSE;
-                        next(state)=safe :  !next(Sensor);
+                        next(state)=safe & counter=2 :  TRUE;       
+                        next(state)=safe & !(counter=2) :  FALSE;    
                         next(state)=hazard: FALSE;
-                        next(state)=sensorFailure: TRUE;                
+                        next(state)=sensorFailure: TRUE;   
+                        next(state)=powerFailure: FALSE;  
+                        next(state)=hazardVoltageDrop: FALSE;           
                         TRUE: SensorMalfunction;
                         esac;
+
+    next(voltageDrop):= case
+                        state=systemOff :   FALSE;
+                        next(state)=systemOff :   FALSE;
+                        next(state)=safe & counter=3 :  TRUE;       
+                        next(state)=safe & !(counter=3) :  FALSE;           
+                        next(state)=hazard: FALSE;
+                        next(state)=sensorFailure: FALSE;
+                        next(state)=powerFailure: FALSE;  
+                        next(state)=hazardVoltageDrop: TRUE; 
+                        TRUE: voltageDrop;
+                        esac;                    
 
     next(power) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       TRUE;
                         next(state) = hazard:     TRUE;
+                        next(state) = sensorFailure: TRUE;
+                        next(state) = powerFailure:  TRUE;
+                        next(state)=hazardVoltageDrop: TRUE;
                         TRUE: power;
                         esac;
     --output
@@ -86,6 +123,9 @@ ASSIGN
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
                         next(state) = hazard:     TRUE;
+                        next(state) = sensorFailure: FALSE;
+                        next(state) = powerFailure:  FALSE;
+                        next(state) = hazardVoltageDrop:  TRUE;
                         TRUE: alarm;
                         esac;
 
@@ -93,6 +133,9 @@ ASSIGN
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
                         next(state) = hazard:     TRUE;
+                        next(state) = sensorFailure: FALSE;
+                        next(state) = powerFailure:  FALSE;
+                        next(state) = hazardVoltageDrop:  FALSE;
                         TRUE: police;
                         esac;
 
@@ -100,6 +143,9 @@ ASSIGN
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
                         next(state) = hazard:     FALSE;
+                        next(state) = sensorFailure: TRUE;
+                        next(state) = powerFailure:  TRUE;
+                        next(state) = hazardVoltageDrop:  FALSE;
                         TRUE: servicetechnican;
                         esac;
     
@@ -107,6 +153,9 @@ ASSIGN
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
                         next(state) = hazard:     FALSE;
+                        next(state) = sensorFailure: FALSE;
+                        next(state) = powerFailure:  FALSE;
+                        next(state) = hazardVoltageDrop:  TRUE;
                         TRUE: batterybackup;
                         esac;
 
@@ -114,7 +163,17 @@ ASSIGN
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
                         next(state) = hazard:     TRUE;
+                        next(state) = sensorFailure: FALSE;
+                        next(state) = powerFailure:  FALSE;
+                        next(state) = hazardVoltageDrop:  FALSE;
                         TRUE: lights;
                         esac;
+
+  --conditional counter
+    next(counter) := case
+                        state  = safe&(Sensor|SensorMalfunction|deviceMalfunction|voltageDrop)&(counter<4): counter+1;
+                        state = safe&(counter=4): 0;
+                         TRUE: counter;
+                         esac;                         
 
     
