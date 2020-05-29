@@ -14,7 +14,8 @@ VAR
     --inputs
     Button: boolean;
     Sensor:boolean;
-    --SensorMalfunction: boolean;
+    SensorMalfunction: boolean;
+    deviceMalfunction: boolean;
     
     
 ASSIGN
@@ -23,6 +24,8 @@ ASSIGN
     --inputs
     init(Button):= FALSE;
     init(Sensor):= FALSE;
+    init(SensorMalfunction):= FALSE;
+    init(deviceMalfunction):= FALSE;
     --outputs
     init(power):= FALSE;
     init(alarm):= FALSE;
@@ -34,28 +37,51 @@ ASSIGN
     next(state) := case
                         state=systemOff&Button :    safe; --system turned on
                         state=safe&!Button :        systemOff;--system turnedoff 
-                        state=safe&Sensor :         hazard;--hazard noticed
+                        
+                        state=safe&Sensor&!SensorMalfunction&Button&!deviceMalfunction :   hazard;--hazard noticed
                         state=hazard&!Button :      systemOff;--manual shutdown from hazard state
-
-                        --state=safe & SensorMalfunction: sensorFailure;
+                        
+                        state=safe&SensorMalfunction&!Sensor&Button&!deviceMalfunction:   sensorFailure;--sensor failed 
+                        state=sensorFailure&!Button :   systemOff;--manual shutdown from sensor failure state
+                        
+                        state=safe&deviceMalfunction&!Sensor&!SensorMalfunction&Button: powerFailure; --device failed causing powerfailure
                         TRUE: state;
                         esac;
-    --sensors
+    --inputs
     next(Sensor):= case
                         state=systemOff :   FALSE;
                         next(state)=systemOff :   FALSE;
                         next(state)=safe :  {TRUE,FALSE};                
+                        next(state)=hazard: TRUE;
+                        next(state)=sensorFailure: FALSE;
                         TRUE: Sensor;
                         esac;
 
-    --inputs
+    next(deviceMalfunction):= case
+                        state=systemOff :   FALSE;
+                        next(state)=systemOff :   FALSE;
+                        next(state)=safe :  !next(Sensor);
+                        next(state)=hazard: FALSE;
+                        next(state)=sensorFailure: TRUE;                
+                        TRUE: SensorMalfunction;
+                        esac;
+
+    next(SensorMalfunction):= case
+                        state=systemOff :   FALSE;
+                        next(state)=systemOff :   FALSE;
+                        next(state)=safe :  !next(Sensor);
+                        next(state)=hazard: FALSE;
+                        next(state)=sensorFailure: TRUE;                
+                        TRUE: SensorMalfunction;
+                        esac;
+
     next(power) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       TRUE;
                         next(state) = hazard:     TRUE;
                         TRUE: power;
                         esac;
-
+    --output
     next(alarm) := case
                         next(state) = systemOff:  FALSE;
                         next(state) = safe:       FALSE;
