@@ -1,0 +1,73 @@
+MODULE main
+VAR
+    --states
+    state: {systemOff, safe, hazard, sensorFailure, powerFailure,hazardVoltageDrop};
+    
+    --outputs
+    power: boolean;
+    alarm: boolean;
+    police: boolean;
+    servicetechnican: boolean;
+    batterybackup: boolean;
+    lights: boolean;
+
+    --inputs
+    Button: boolean;
+    Sensor:boolean;
+    --SensorMalfunction: boolean;
+    
+    
+ASSIGN
+    init(state):= systemOff;
+    init(power):= FALSE;
+    init(Button):= FALSE;
+    init(alarm):= FALSE;
+    init(police):= FALSE;
+    init(servicetechnican):= FALSE;
+    init(batterybackup):= FALSE;
+    init(lights):= FALSE;
+
+    next(state) := case
+                        state=systemOff&Button :    safe; --system turned on
+                        state=safe&!Button :        systemOff;--system turnedoff 
+                        state=
+                        --state=safe & SensorMalfunction: sensorFailure;
+                        TRUE: state;
+                        esac;
+    next(power) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       TRUE;
+                        TRUE: power;
+                        esac;
+
+    next(alarm) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       FALSE;
+                        TRUE: power;
+                        esac;
+
+    next(police) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       FALSE;
+                        TRUE: power;
+                        esac;
+
+    next(servicetechnican) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       FALSE;
+                        TRUE: power;
+                        esac;
+    
+    next(batterybackup) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       FALSE;
+                        TRUE: power;
+                        esac;
+
+    next(lights) := case
+                        next(state) = systemOff:  FALSE;
+                        next(state) = safe:       FALSE;
+                        TRUE: power;
+                        esac;
+
+    
