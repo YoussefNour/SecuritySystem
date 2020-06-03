@@ -175,5 +175,17 @@ ASSIGN
                         state = safe&(counter=4): 0;
                          TRUE: counter;
                          esac;                         
+  --Testing
+    SPEC AG ((state=systemOff&Button=TRUE)->AX(power=TRUE));
+    SPEC AG ((state=safe&Sensor=TRUE&Button=TRUE)->AX(alarm=TRUE&lights=TRUE&police=TRUE));
+    SPEC AG ((state=safe&SensorMalfunction=TRUE&Button=TRUE)->AX(servicetechnican=TRUE));
+    SPEC AG ((state=safe&voltageDrop=TRUE&Button=TRUE)->AX(alarm=TRUE&batterybackup=TRUE));
+    SPEC AG ((state=safe&deviceMalfunction=TRUE&Button=TRUE)->AX(servicetechnican=TRUE));
+    SPEC AG ((state=safe&Button=FALSE)->AX(power=FALSE));
+    SPEC AG ((state=hazard&Button=FALSE)->AX(power=FALSE));
+    SPEC AG ((state=sensorFailure&Button=FALSE)->AX(power=FALSE));
+    SPEC AG ((state=hazardVoltageDrop&Button=FALSE)->AX(power=FALSE));
+    SPEC AG ((state=powerFailure&Button=FALSE)->AX(power=FALSE));
 
-    
+
+
